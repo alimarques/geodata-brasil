@@ -1,6 +1,8 @@
 # geodata-brasil
 Dados de geolocalização de municípios brasileiros em GeoJSON.
 
+<img src="municipios_brasil.png" title="Municípios do Brasil" alt="Mapa com municípios do Brasil" width="400"/>
+
 Para instalar as bibliotecas utilizadas:
 ```
 pip install requirements.txt
