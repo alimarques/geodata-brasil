@@ -22,6 +22,7 @@ class Extractor:
     def __init__(self):
         self.extract_cities()
         self.filter_json()
+        self.extract_states()
 
     def extract_cities(self):
         """
@@ -40,9 +41,16 @@ class Extractor:
             {
                 'id':result['id'],
                 'nome':result['nome'],
-                'estado':result['microrregiao']['mesorregiao']['UF']['nome']
+                'estado':result['microrregiao']['mesorregiao']['UF']['nome'],
+                'estado_sigla':result['microrregiao']['mesorregiao']['UF']['sigla']
             } for result in self.data
         ]
+    
+    def extract_states(self):
+        """
+            Extrair sigla dos Estados brasileiros
+        """
+        self.estados = set([city['estado_sigla'] for city in self.data])
     
     def extract_geojson(self, city):
         """
@@ -64,17 +72,17 @@ class Extractor:
             Parametros:
                 - state: Estado para realizar a extracao
                     - all (default): Todos os municipios brasileiros
-                    - Caso contrário, ira extrair todos os municipios de um determinado Estado brasileiro (especificar o nome)
+                    - Caso contrário, ira extrair todos os municipios de um determinado Estado brasileiro (especificar a sigla)
         """
         if state == 'all':
             data_to_extract = self.data
         else:
             try:
-                data_to_extract = [city for city in self.data if city['estado'] == state]
+                data_to_extract = [city for city in self.data if city['estado_sigla'] == state]
             except:
-                raise ValueError("Estado não encontrado. Verifique se informou o nome corretamente.")
+                raise ValueError("Estado não encontrado. Verifique se informou a sigla corretamente.")
 
         # Use multiprocessing to process combinations in parallel
         with multiprocessing.Pool(processes=PROCESSORS) as pool:
             results = [city for city in pool.map(self.extract_geojson, data_to_extract)]
-        self.data_geojson = results
+        return results
