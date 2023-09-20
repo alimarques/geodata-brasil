@@ -13,4 +13,4 @@ for state in extractor.estados:
 results = extractor.extract_geojsons()
 feature_collection = FeatureCollection(results)
 gdf_cities = gpd.GeoDataFrame.from_features(feature_collection['features'])
-gdf_cities.to_json('data/brasil.json')
+gdf_cities.to_file('data/geojson/municipios.json', driver='GeoJSON')
