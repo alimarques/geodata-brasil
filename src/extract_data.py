@@ -2,7 +2,7 @@ import ssl
 import requests
 import multiprocessing
 
-from params import URL_MUNICIPIOS, URL_MALHAS, PROCESSORS
+from params import URL_MUNICIPIOS, URL_MALHAS_MUNICIPIOS, URL_MALHAS_ESTADOS, PROCESSORS
 
 class TLSAdapter(requests.adapters.HTTPAdapter):
     """
@@ -22,7 +22,7 @@ class Extractor:
     def __init__(self):
         self.extract_cities()
         self.filter_json()
-        self.extract_states()
+        self.extract_states_names()
 
     def extract_cities(self):
         """
@@ -46,7 +46,7 @@ class Extractor:
             } for result in self.data
         ]
     
-    def extract_states(self):
+    def extract_states_names(self):
         """
             Extrair sigla dos Estados brasileiros
         """
@@ -54,10 +54,10 @@ class Extractor:
     
     def extract_geojson(self, city):
         """
-            Extrai a malha de um municipio expecifico em formato GEOJSON
+            Extrai a malha de um municipio expecifico em formato GeoJSON
         """
         id = city['id']
-        url = f'{URL_MALHAS}{id}?formato=application/vnd.geo+json'
+        url = f'{URL_MALHAS_MUNICIPIOS}{id}?formato=application/vnd.geo+json'
         with requests.session() as s:
             s.mount("https://", TLSAdapter())
             response = s.get(url).json()
@@ -66,9 +66,23 @@ class Extractor:
             features = response['features'][0]
         return features
 
+    def extract_geojson(self, state):
+        """
+            Extrai a malha de um Estado expecifico em formato GeoJSON
+            Parametros:
+                - state: Sigla do Estado
+        """
+        url = f'{URL_MALHAS_ESTADOS}{state}?formato=application/vnd.geo+json'
+        with requests.session() as s:
+            s.mount("https://", TLSAdapter())
+            response = s.get(url).json()
+            response['features'][0]['properties']['estado_sigla'] = state
+            features = response['features'][0]
+        return features
+
     def extract_geojsons(self, state='all'):
         """
-            Extrai a malha de todos os municipios em formato GEOJSON
+            Extrai a malha de todos os municipios em formato GeoJSON
             Parametros:
                 - state: Estado para realizar a extracao
                     - all (default): Todos os municipios brasileiros
@@ -85,4 +99,25 @@ class Extractor:
         # Use multiprocessing to process combinations in parallel
         with multiprocessing.Pool(processes=PROCESSORS) as pool:
             results = [city for city in pool.map(self.extract_geojson, data_to_extract)]
+        return results
+    
+    def extract_geojsons(self, state='all'):
+        """
+            Extrai a malha de todos os Estados em formato GeoJSON
+            Parametros:
+                - state: Estado para realizar a extracao
+                    - all (default): Todos os Estados brasileiros
+                    - Caso contrário, ira extrair um determinado Estado brasileiro (especificar a sigla)
+        """
+        if state == 'all':
+            data_to_extract = self.estados
+        else:
+            if state in self.estados:
+                data_to_extract = state
+            else:
+                raise ValueError("Estado não encontrado. Verifique se informou a sigla corretamente.")
+
+        # Use multiprocessing to process combinations in parallel
+        with multiprocessing.Pool(processes=PROCESSORS) as pool:
+            results = [state for state in pool.map(self.extract_geojson, data_to_extract)]
         return results
