@@ -52,7 +52,7 @@ class Extractor:
         """
         self.estados = set([city['estado_sigla'] for city in self.data])
     
-    def extract_geojson(self, city):
+    def extract_geojson_city(self, city):
         """
             Extrai a malha de um municipio expecifico em formato GeoJSON
         """
@@ -66,7 +66,7 @@ class Extractor:
             features = response['features'][0]
         return features
 
-    def extract_geojson(self, state):
+    def extract_geojson_state(self, state):
         """
             Extrai a malha de um Estado expecifico em formato GeoJSON
             Parametros:
@@ -80,44 +80,36 @@ class Extractor:
             features = response['features'][0]
         return features
 
-    def extract_geojsons(self, state='all'):
+    def extract_geojsons(self, state='all', type='municipios'):
         """
             Extrai a malha de todos os municipios em formato GeoJSON
             Parametros:
                 - state: Estado para realizar a extracao
                     - all (default): Todos os municipios brasileiros
                     - Caso contrário, ira extrair todos os municipios de um determinado Estado brasileiro (especificar a sigla)
+                - type: Tipo de extracao
+                    - municipios
+                    - estados
         """
-        if state == 'all':
-            data_to_extract = self.data
-        else:
-            try:
-                data_to_extract = [city for city in self.data if city['estado_sigla'] == state]
-            except:
-                raise ValueError("Estado não encontrado. Verifique se informou a sigla corretamente.")
-
-        # Use multiprocessing to process combinations in parallel
-        with multiprocessing.Pool(processes=PROCESSORS) as pool:
-            results = [city for city in pool.map(self.extract_geojson, data_to_extract)]
-        return results
-    
-    def extract_geojsons(self, state='all'):
-        """
-            Extrai a malha de todos os Estados em formato GeoJSON
-            Parametros:
-                - state: Estado para realizar a extracao
-                    - all (default): Todos os Estados brasileiros
-                    - Caso contrário, ira extrair um determinado Estado brasileiro (especificar a sigla)
-        """
-        if state == 'all':
+        if type == 'municipios':
+            if state == 'all':
+                data_to_extract = self.data
+            else:
+                try:
+                    data_to_extract = [city for city in self.data if city['estado_sigla'] == state]
+                except:
+                    raise ValueError("Estado não encontrado. Verifique se informou a sigla corretamente.")
+        elif type == 'estados':
             data_to_extract = self.estados
         else:
-            if state in self.estados:
-                data_to_extract = state
-            else:
-                raise ValueError("Estado não encontrado. Verifique se informou a sigla corretamente.")
+            raise ValueError("Escolha entre municipios ou Estados.")
 
         # Use multiprocessing to process combinations in parallel
-        with multiprocessing.Pool(processes=PROCESSORS) as pool:
-            results = [state for state in pool.map(self.extract_geojson, data_to_extract)]
-        return results
+        if type == 'municipios':
+            with multiprocessing.Pool(processes=PROCESSORS) as pool:
+                results = [result for result in pool.map(self.extract_geojson_city, data_to_extract)]
+            return results
+        if type == 'estados':
+            with multiprocessing.Pool(processes=PROCESSORS) as pool:
+                results = [result for result in pool.map(self.extract_geojson_state, data_to_extract)]
+            return results
